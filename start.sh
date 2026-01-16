@@ -32,7 +32,7 @@ sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-
 # --- 3. Development Tools & Vim ---
 echo "-----------------------------------------------------"
 echo "Installing Dev Tools and Vim..."
-sudo dnf install clang gcc make kernel-devel kernel-headers dkms acpid libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig vim util-linux-user zsh python3 pip -y
+sudo dnf install clang gcc make kernel-devel kernel-headers dkms acpid libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig vim util-linux-user valgrind zsh python3 pip -y
 
 # --- 4. Install Google Chrome ---
 echo "-----------------------------------------------------"
@@ -86,13 +86,19 @@ echo "Installing X Window System..."
 # 'base-x' is the modern group name for X11 core
 sudo dnf install @base-x xorg-x11-server-Xorg xorg-x11-xinit xterm -y
 
-# --- 9. X Window System (Fixed for Fedora 43) ---
+# --- 9. norminette ---
 echo "-----------------------------------------------------"
 echo "installing norminette.."
-# 'base-x' is the modern group name for X11 core
+# norminette
 python3 -m pip install -U norminette
 
-# --- 10. Cleanup ---
+# --- 10. X Window System (Fixed for Fedora 43) ---
+echo "-----------------------------------------------------"
+echo "installing c_formatter_42"
+# a 42 norminette extention
+pip3 install c-formatter-42
+
+# --- 11. Cleanup ---
 echo "-----------------------------------------------------"
 echo "Cleaning up..."
 sudo dnf autoremove -y
