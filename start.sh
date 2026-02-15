@@ -97,7 +97,7 @@ echo "-----------------------------------------------------"
 echo "installing c_formatter_42"
 # a 42 norminette extention
 pip3 install c-formatter-42
-
+sudo export PATH=$PATH:$HOME/.local/bin
 # --- 11. Cleanup ---
 echo "-----------------------------------------------------"
 echo "Cleaning up..."

@@ -78,7 +78,7 @@ echo "-----------------------------------------------------"
 echo "📏 Installing 42 School tools..."
 python3 -m pip install -U norminette
 pip3 install c-formatter-42
-
+sudo export PATH=$PATH:$HOME/.local/bin
 # --- 9. Cleanup ---
 echo "-----------------------------------------------------"
 echo "🧹 Cleaning up..."
