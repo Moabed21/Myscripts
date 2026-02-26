@@ -53,7 +53,10 @@ echo "Setting up Flatpak, VS Code, and Telegram..."
 sudo dnf install flatpak -y
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install flathub org.telegram.desktop -y
-flatpak install flathub com.visualstudio.code -y
+# flatpak install flathub com.visualstudio.code -y
+sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
+sudo sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+sudo dnf install code
 
 # --- 7. Zsh & Oh My Zsh Configuration ---
 echo "-----------------------------------------------------"
