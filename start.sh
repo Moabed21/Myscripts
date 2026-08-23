@@ -1,71 +1,97 @@
 #!/bin/bash
 
 # ==============================================================================
-# Fedora 43+ Setup Script (Final)
+# Fedora 44 Setup Script
+# Updated for: DNF5, Wayland-only GNOME 50, PEP 668 (pipx)
+# Projects: Cub3d, CPP00-05, BlackEye (Go), Smart-Educator (Python/Docker),
+#           mini-rag (Python/Docker), JARVIS (Ollama), opencode (Bun/Node)
 # ==============================================================================
 
 # Stop script on error
 set -e
 
-# 1. DETECT THE REAL USER
+# ── 1. DETECT THE REAL USER ──
 if [ -n "$SUDO_USER" ]; then
     REAL_USER="$SUDO_USER"
     REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
 else
-    echo "Error: Please run this script with sudo (e.g., sudo ./setup.sh)"
+    echo "Error: Please run this script with sudo (e.g., sudo ./start.sh)"
     exit 1
 fi
 
-echo "Starting System Setup for user: $REAL_USER"
+echo "Starting Fedora 44 System Setup for user: $REAL_USER"
 
-# --- 1. System Update ---
+# ── 2. System Update ──
 echo "-----------------------------------------------------"
 echo "Updating the system..."
-sudo dnf update --refresh -y
+dnf update --refresh -y
 
-# --- 2. Enable Repositories (RPM Fusion) ---
+# ── 3. Enable Repositories (RPM Fusion) ──
 echo "-----------------------------------------------------"
 echo "Enabling RPM Fusion Repositories..."
-sudo dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm -y || true
-sudo dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm -y || true
+dnf install https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm -y || true
+dnf install https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm -y || true
 
-# --- 3. Development Tools & Vim ---
+# ── 4. Core Development Tools ──
 echo "-----------------------------------------------------"
-echo "Installing Dev Tools and Vim..."
-sudo dnf install clang gcc make kernel-devel kernel-headers dkms acpid libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig vim util-linux-user valgrind zsh python3 pip -y
+echo "Installing Core Dev Tools (C/C++, Python, Zsh, Vim, Valgrind)..."
+dnf install \
+    clang gcc g++ make cmake \
+    kernel-devel kernel-headers dkms acpid \
+    libglvnd-glx libglvnd-opengl libglvnd-devel pkgconfig \
+    vim util-linux-user valgrind gdb \
+    zsh git curl wget \
+    python3 python3-pip python3-devel pipx \
+    -y
 
-# --- 4. Install Google Chrome ---
+# ── 5. X11/XWayland Development Libraries (for Cub3d / minilibx) ──
+echo "-----------------------------------------------------"
+echo "Installing X11 dev libraries (needed for minilibx / Cub3d)..."
+# Fedora 44 is Wayland-only for GNOME, but XWayland still runs X11 apps.
+# minilibx-linux links against -lXext -lX11 and uses X11/Xlib.h, XShm, etc.
+dnf install \
+    libX11-devel libXext-devel libXrandr-devel \
+    libXinerama-devel libXcursor-devel libXi-devel \
+    libXfixes-devel libXrender-devel \
+    xterm \
+    mesa-libGL-devel \
+    -y
+
+# ── 6. Install Google Chrome ──
 echo "-----------------------------------------------------"
 echo "Installing Google Chrome..."
-sudo dnf install fedora-workstation-repositories -y
-# Handle DNF5 syntax vs DNF4
-sudo dnf config-manager set-enabled google-chrome 2>/dev/null || sudo dnf config-manager --set-enabled google-chrome 2>/dev/null || true
-sudo dnf install google-chrome-stable -y
+dnf install fedora-workstation-repositories -y
+# DNF5 syntax: use setopt instead of deprecated --set-enabled
+dnf config-manager setopt google-chrome.enabled=1 2>/dev/null || true
+dnf install google-chrome-stable -y
 
-# --- 5. Install NVIDIA Drivers (Akmod) ---
+# ── 7. Install NVIDIA Drivers (Akmod) ──
 echo "-----------------------------------------------------"
 echo "Installing NVIDIA Drivers..."
-sudo dnf install akmod-nvidia xorg-x11-drv-nvidia-cuda -y
+dnf install akmod-nvidia xorg-x11-drv-nvidia-cuda -y
 
-# --- 6. Flatpak Setup & Apps (VS Code + Telegram) ---
+# ── 8. Flatpak Setup & Apps (Telegram) ──
 echo "-----------------------------------------------------"
-echo "Setting up Flatpak, VS Code, and Telegram..."
-sudo dnf install flatpak -y
+echo "Setting up Flatpak and Telegram..."
+dnf install flatpak -y
 flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 flatpak install flathub org.telegram.desktop -y
-# flatpak install flathub com.visualstudio.code -y
-sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-sudo sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
-sudo dnf install code
 
-# --- 7. Zsh & Oh My Zsh Configuration ---
+# ── 9. Install VS Code (from Microsoft repo) ──
+echo "-----------------------------------------------------"
+echo "Installing Visual Studio Code..."
+rpm --import https://packages.microsoft.com/keys/microsoft.asc
+sh -c 'echo -e "[code]\nname=Visual Studio Code\nbaseurl=https://packages.microsoft.com/yumrepos/vscode\nenabled=1\ngpgcheck=1\ngpgkey=https://packages.microsoft.com/keys/microsoft.asc" > /etc/yum.repos.d/vscode.repo'
+dnf install code -y
+
+# ── 10. Zsh & Oh My Zsh Configuration ──
 echo "-----------------------------------------------------"
 echo "Setting up Zsh for $REAL_USER..."
 
 # A. Install Oh My Zsh
 if [ ! -d "$REAL_HOME/.oh-my-zsh" ]; then
   echo "Installing Oh My Zsh..."
-  sudo -u "$REAL_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  sudo -u "$REAL_USER" bash -c 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended'
 fi
 
 # B. Download Plugins
@@ -81,34 +107,80 @@ sudo -u "$REAL_USER" sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zs
 
 # D. Set Zsh as Default Shell
 echo "Changing default shell to zsh..."
-sudo usermod --shell /bin/zsh "$REAL_USER"
+usermod --shell /bin/zsh "$REAL_USER"
 
-# --- 8. X Window System (Fixed for Fedora 43) ---
+# ── 11. Python Tools via pipx (PEP 668 compliant) ──
 echo "-----------------------------------------------------"
-echo "Installing X Window System..."
-# 'base-x' is the modern group name for X11 core
-sudo dnf install @base-x xorg-x11-server-Xorg xorg-x11-xinit xterm -y
+echo "Installing Python CLI tools via pipx..."
+# Ensure pipx bin dir exists and is in PATH
+sudo -u "$REAL_USER" pipx ensurepath
+sudo -u "$REAL_USER" pipx install norminette || sudo -u "$REAL_USER" pipx upgrade norminette
+sudo -u "$REAL_USER" pipx install c-formatter-42 || sudo -u "$REAL_USER" pipx upgrade c-formatter-42
 
-# --- 9. norminette ---
-echo "-----------------------------------------------------"
-echo "installing norminette.."
-# norminette
-python3 -m pip install -U norminette
+# Add pipx/local bin to zshrc if not already present
+if ! grep -q '.local/bin' "$REAL_HOME/.zshrc" 2>/dev/null; then
+    echo 'export PATH="$PATH:$HOME/.local/bin"' >> "$REAL_HOME/.zshrc"
+fi
 
-# --- 10. X Window System (Fixed for Fedora 43) ---
+# ── 12. Go Language & BlackEye Build ──
 echo "-----------------------------------------------------"
-echo "installing c_formatter_42"
-# a 42 norminette extention
-pip3 install c-formatter-42
-sudo export PATH=$PATH:$HOME/.local/bin
-# --- 11. Cleanup ---
+echo "Installing Go and building BlackEye..."
+dnf install golang util-linux iproute procps-ng pciutils firewalld -y
+
+# If BlackEye source exists in user Documents, compile and install globally
+if [ -d "$REAL_HOME/Documents/BlackEye" ]; then
+    echo "Compiling BlackEye dashboard..."
+    (cd "$REAL_HOME/Documents/BlackEye" && sudo -u "$REAL_USER" make)
+    if [ -f "$REAL_HOME/Documents/BlackEye/blackeye" ]; then
+        cp "$REAL_HOME/Documents/BlackEye/blackeye" /usr/local/bin/blackeye
+        chmod 755 /usr/local/bin/blackeye
+        echo "BlackEye installed to /usr/local/bin/blackeye (Run with 'sudo blackeye')"
+    fi
+fi
+
+# ── 13. Docker & Docker Compose (for Smart-Educator, mini-rag, JARVIS) ──
+echo "-----------------------------------------------------"
+echo "Installing Docker..."
+dnf install dnf-plugins-core -y
+dnf config-manager addrepo --from-repofile=https://download.docker.com/linux/fedora/docker-ce.repo 2>/dev/null || true
+dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+
+# Enable and start Docker
+systemctl enable --now docker
+# Add user to docker group (no sudo needed for docker commands)
+usermod -aG docker "$REAL_USER"
+
+# ── 14. Ollama (for JARVIS - local LLM with Modelfile) ──
+echo "-----------------------------------------------------"
+echo "Installing Ollama (local AI models)..."
+curl -fsSL https://ollama.com/install.sh | sh
+# Enable Ollama service
+systemctl enable --now ollama
+
+# ── 15. Node.js & Bun (for opencode project) ──
+echo "-----------------------------------------------------"
+echo "Installing Node.js and Bun..."
+dnf install nodejs npm -y
+# Install Bun for the user (opencode uses bun as packageManager)
+sudo -u "$REAL_USER" bash -c 'curl -fsSL https://bun.sh/install | bash'
+
+# ── 16. Cleanup ──
 echo "-----------------------------------------------------"
 echo "Cleaning up..."
-sudo dnf autoremove -y
+dnf autoremove -y
 
 echo "====================================================="
 echo "Setup Complete!"
-echo "Please wait approx 5 minutes for the Nvidia akmod to build."
-echo "THEN REBOOT YOUR MACHINE."
+echo ""
+echo "  IMPORTANT NOTES:"
+echo "  1. Wait ~5 minutes for the NVIDIA akmod kernel module to build."
+echo "  2. Log out and back in for Docker group membership to take effect."
+echo "  3. THEN REBOOT YOUR MACHINE."
+echo ""
+echo "  Post-reboot checklist:"
+echo "    - Launch system dashboard: 'sudo blackeye'"
+echo "    - Run 'ollama pull qwen2.5:3b' to download JARVIS model"
+echo "    - Run 'docker compose up -d' in your project dirs"
+echo "    - Run 'bun install' in the opencode project"
 echo "====================================================="
-echo "====================================================="
+
